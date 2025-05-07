@@ -46,7 +46,7 @@ ALLOWED_HOSTS = ["*" ,"*.up.railway.app"]
 
 # Añade tu dominio de Railway aquí para la verificación CSRF
 CSRF_TRUSTED_ORIGINS = [
-    'https://registro-production-edfb.up.railway.app'
+    'https://registro.up.railway.app'
 ]
 
 
