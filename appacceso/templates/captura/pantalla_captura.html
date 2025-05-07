@@ -1,0 +1,148 @@
+{% extends "appacceso/base.html" %}
+{% load static i18n widget_tweaks %} 
+
+{% block title %}Captura de Registro y Firma{% endblock %}
+
+{% block extrastyle %}
+<style>
+    #signature-pad-container {
+        border: 1px solid #ced4da; /* Bootstrap's default border color for form inputs */
+        border-radius: .25rem; /* Bootstrap's default border-radius */
+        cursor: crosshair;
+        margin-bottom: 10px;
+        touch-action: none; /* Para evitar el scroll en móviles mientras se dibuja */
+        background-color: #fff; /* Fondo blanco para el canvas */
+    }
+    #signature-canvas {
+        width: 100%;
+        height: 200px; /* Ajusta la altura según necesites */
+        display: block; /* Para evitar espacio extra debajo del canvas */
+    }
+    .signature-buttons {
+        margin-top: 10px;
+    }
+    /* Estilo para mensajes de error de Django si no se usa Bootstrap para ellos */
+    .errorlist {
+        color: #dc3545; /* Color de error de Bootstrap */
+        list-style-type: none;
+        padding: 0;
+        font-size: .875em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <h2 class="card-title mb-4">Nuevo Registro</h2>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{% if message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="post" id="captureForm" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="mb-3">
+                    <label for="id_usuario" class="form-label">Usuario:</label>
+                    <input type="text" id="id_usuario" class="form-control-plaintext" value="{{ request.user.get_full_name|default:request.user.username }}" readonly>
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.fecha_ingreso.id_for_label }}" class="form-label">{{ form.fecha_ingreso.label }}:</label>
+                    {{ form.fecha_ingreso }} {# Asume que 'form-control' ya está en el widget #}
+                    {% if form.fecha_ingreso.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.fecha_ingreso.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.comentarios.id_for_label }}" class="form-label">Comentarios:</label>
+                    {{ form.comentarios|add_class:"form-control" }}
+                    {% if form.comentarios.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.comentarios.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Firma:</label>
+                    <div id="signature-pad-container">
+                         <canvas id="signature-canvas"></canvas>
+                    </div>
+                    <div class="signature-buttons mt-2">
+                        <button type="button" id="clear-signature" class="btn btn-sm btn-outline-secondary">Limpiar Firma</button>
+                    </div>
+                    {{ form.signature_data_url }} {# Input oculto para los datos de la firma #}
+                    {% if form.signature_data_url.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.signature_data_url.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="btn btn-primary">Guardar Registro</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrascript %}
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var canvas = document.getElementById('signature-canvas');
+    var signaturePad = new SignaturePad(canvas, {
+        backgroundColor: 'rgb(255, 255, 255)' // Fondo blanco
+    });
+
+    // Ajustar el tamaño del canvas al de su contenedor
+    function resizeCanvas() {
+        var ratio =  Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        canvas.getContext("2d").scale(ratio, ratio);
+        signaturePad.clear(); // Limpiar la firma al redimensionar para evitar distorsión
+    }
+
+    // Redimensionar al cargar y al cambiar el tamaño de la ventana
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas(); // Llamada inicial
+
+    document.getElementById('clear-signature').addEventListener('click', function () {
+        signaturePad.clear();
+    });
+
+    document.getElementById('captureForm').addEventListener('submit', function (event) {
+        if (signaturePad.isEmpty()) {
+            // Si quieres que la firma sea obligatoria, descomenta las siguientes líneas:
+            // alert("Por favor, provea una firma.");
+            // event.preventDefault(); // Evita el envío del formulario
+        } else {
+            // Obtener la firma como Data URL (PNG por defecto)
+            var dataURL = signaturePad.toDataURL();
+            // Asignar al campo oculto del formulario
+            document.querySelector('input[name="signature_data_url"]').value = dataURL;
+        }
+    });
+});
+</script>
+{% endblock %}
