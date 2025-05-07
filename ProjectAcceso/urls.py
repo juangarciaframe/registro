@@ -17,6 +17,12 @@ def root_redirect_view(request):
         return redirect('appacceso:home') # Otros usuarios a la pantalla de captura
     return redirect('login') # Si no está autenticado, al login
 
+# Personalización del sitio de Admin
+admin.site.site_header = "Administración Framework SAS - Registro" # Título en la cabecera (grande)
+admin.site.site_title = "Portal de Admin Framework SAS" # Título en la pestaña del navegador
+admin.site.index_title = "Bienvenido al Portal de Administración" # Título en la página de inicio del admin
+
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('app/', include('appacceso.urls', namespace='appacceso')), # URLs de tu app de captura, corregir namespace
