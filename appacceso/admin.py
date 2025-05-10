@@ -3,8 +3,7 @@ from django.contrib import admin
 from .models import RegistroFirma, Sede
 from django.utils.html import format_html
 from import_export import resources
-from import_export.admin import ImportExportModelAdmin 
-# from semantic_admin.admin import SemanticModelAdmin # Si necesitas funcionalidades específicas de SemanticAdmin
+from semantic_admin.contrib.import_export.admin import SemanticImportExportModelAdmin
 
 
 @admin.register(Sede)
@@ -41,10 +40,13 @@ class RegistroFirmaResource(resources.ModelResource):
     # def dehydrate_firma_url(self, registro):
     #     return registro.firma.url if registro.firma else ''
 
+
+
+
+
 @admin.register(RegistroFirma)
-class RegistroFirmaAdmin(ImportExportModelAdmin): # Cambiar la herencia a la de django-import-export
+class RegistroFirmaAdmin(SemanticImportExportModelAdmin): # Cambiar la herencia a la de django-import-export
     # Forzar el uso de nuestra plantilla sobrescrita
-    change_list_template = "semantic_admin/admin/import_export/change_list.html"
     resource_classes = [RegistroFirmaResource] # Usar la clase Resource
     list_display = ('usuario', 'sede', 'fecha_ingreso', 'fecha_grabacion', 'ver_firma')
     list_filter = ('fecha_ingreso', 'usuario', 'sede')
