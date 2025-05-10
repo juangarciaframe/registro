@@ -1,9 +1,9 @@
-# d:\ruta_a_tu_nuevo_proyecto\proyecto_firmas\captura\admin.py
+# d:\AAA_Framework_Acceso\ProjectAcceso\appacceso\admin.py
 from django.contrib import admin
 from .models import RegistroFirma, Sede
 from django.utils.html import format_html
 from import_export import resources
-from import_export.admin import ImportExportModelAdmin # Usar esta para la funcionalidad
+from import_export.admin import ImportExportModelAdmin 
 # from semantic_admin.admin import SemanticModelAdmin # Si necesitas funcionalidades específicas de SemanticAdmin
 
 
@@ -43,6 +43,8 @@ class RegistroFirmaResource(resources.ModelResource):
 
 @admin.register(RegistroFirma)
 class RegistroFirmaAdmin(ImportExportModelAdmin): # Cambiar la herencia a la de django-import-export
+    # Forzar el uso de nuestra plantilla sobrescrita
+    change_list_template = "semantic_admin/admin/import_export/change_list.html"
     resource_classes = [RegistroFirmaResource] # Usar la clase Resource
     list_display = ('usuario', 'sede', 'fecha_ingreso', 'fecha_grabacion', 'ver_firma')
     list_filter = ('fecha_ingreso', 'usuario', 'sede')
@@ -58,7 +60,7 @@ class RegistroFirmaAdmin(ImportExportModelAdmin): # Cambiar la herencia a la de 
             'fields': ('usuario', 'sede', 'fecha_ingreso', 'firma_preview', 'fecha_grabacion')
         }),
     )
-    # La acción de exportar se añade automáticamente por SemanticImportExportModelAdmin
+    # La acción de exportar se añade automáticamente por ImportExportModelAdmin
 
     def ver_firma(self, obj):
         if obj.firma:
