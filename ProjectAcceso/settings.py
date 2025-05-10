@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "appacceso",
     "users_app",
     "widget_tweaks",
+    "import_export", # Añadir django-import-export
     
 ]
 
@@ -114,7 +115,7 @@ DATABASES = {
         # No es necesario usar env() aquí para la URL de la base de datos.
         conn_max_age=600 # Opcional: mantiene las conexiones abiertas por 10 minutos
     )
- }
+}
 
 
 
