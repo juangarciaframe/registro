@@ -4,6 +4,11 @@ from .models import RegistroFirma, Sede
 from django.utils.html import format_html
 from import_export import resources
 from semantic_admin.contrib.import_export.admin import SemanticImportExportModelAdmin
+from django.http import HttpResponse
+from django.utils import timezone # Para el nombre del archivo
+from openpyxl import Workbook
+from openpyxl.drawing.image import Image as OpenpyxlImage # Renombrar para evitar conflicto con PIL.Image
+import openpyxl.utils # Para get_column_letter
 
 
 @admin.register(Sede)
