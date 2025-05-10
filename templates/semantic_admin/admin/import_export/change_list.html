@@ -1,0 +1,27 @@
+{% extends "semantic_admin/admin/change_list.html" %} {# CORRECCIÓN AQUÍ #}
+{% load i18n admin_urls static semantic_admin_list %}
+
+{# 
+   Esta plantilla sobrescribe la de semantic_admin para la vista de lista cuando se usa django-import-export.
+   La plantilla original de semantic_admin intentaba extender una variable 'base_change_list_template'
+   que a veces puede estar vacía. Aquí la hacemos extender directamente la plantilla de lista de cambios
+   base de semantic_admin.
+#}
+
+{% block object-tools-items %}
+    {{ block.super }} {# Incluye los items del bloque padre si los hubiera #}
+    {% if not is_popup %}
+        {# Los botones de Importar/Exportar se añaden aquí #}
+        <form action="{% url opts|admin_urlname:'export' %}{% if request.GET.q %}?q={{ request.GET.q }}{% endif %}" method="POST" style="display: inline;">
+            {% csrf_token %}
+            {{ adminform.media.js }} {# Para los formatos de archivo si se usa el widget #}
+            {% for pair in export_form_action_params.items %}<input type="hidden" name="{{ pair.0 }}" value="{{ pair.1 }}">{% endfor %}
+            <button type="submit" class="ui right floated small positive labeled icon button">
+                <i class="download icon"></i> {% translate "Export" %}
+            </button>
+        </form>
+        <a href="{% url opts|admin_urlname:'import' %}{% if request.GET.q %}?q={{ request.GET.q }}{% endif %}" class="ui right floated small primary labeled icon button">
+            <i class="upload icon"></i> {% translate "Import" %}
+        </a>
+    {% endif %}
+{% endblock %}
