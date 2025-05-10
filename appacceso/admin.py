@@ -24,30 +24,26 @@ class RegistroFirmaResource(resources.ModelResource):
     fecha_ingreso_formateada = resources.Field(attribute='fecha_ingreso', column_name='Fecha de Ingreso')
     fecha_grabacion_formateada = resources.Field(attribute='fecha_grabacion', column_name='Fecha de Grabación')
     # Si quieres exportar la URL de la firma (ten en cuenta que esto es solo la URL, no la imagen en sí)
-    # firma_url = resources.Field(attribute='firma__url', column_name='URL Firma')
+    firma_url = resources.Field(column_name='URL Firma') # Activamos este campo
 
 
     class Meta:
         model = RegistroFirma
         # Define los campos que quieres exportar y su orden
-        fields = ('id', 'usuario_username', 'sede_nombre', 'fecha_ingreso_formateada', 'fecha_grabacion_formateada')
-        # Si quieres incluir la URL de la firma, añade 'firma_url' a fields
-        # fields = ('id', 'usuario_username', 'sede_nombre', 'fecha_ingreso_formateada', 'fecha_grabacion_formateada', 'firma_url')
+        fields = ('id', 'usuario_username', 'sede_nombre', 'fecha_ingreso_formateada', 'fecha_grabacion_formateada', 'firma_url') # Añadimos firma_url
         export_order = fields # Mantiene el orden definido en fields
 
     def dehydrate_fecha_ingreso_formateada(self, registro):
         return registro.fecha_ingreso.strftime("%Y-%m-%d %H:%M:%S") if registro.fecha_ingreso else ''
-
+    
     def dehydrate_fecha_grabacion_formateada(self, registro):
         return registro.fecha_grabacion.strftime("%Y-%m-%d %H:%M:%S") if registro.fecha_grabacion else ''
     
     # Si decides exportar la URL de la firma:
-    # def dehydrate_firma_url(self, registro):
-    #     return registro.firma.url if registro.firma else ''
-
-
-
-
+    def dehydrate_firma_url(self, registro): # Activamos este método
+        if registro.firma:
+            return registro.firma.url # Esto da la URL relativa, ej: /media/firmas/2023/05/09/firma.png
+        return ''
 
 @admin.register(RegistroFirma)
 class RegistroFirmaAdmin(SemanticImportExportModelAdmin): # Cambiar la herencia a la de django-import-export
