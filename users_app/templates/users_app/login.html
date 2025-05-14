@@ -25,9 +25,14 @@
                                     {% endfor %}
                                 {% endif %}
                             </div>
-                            <div class="form-group text-center">
+                            <div class="form-group text-center mb-3"> {# Añadido mb-3 para espaciado similar al username #}
                                 {{ form.password.label_tag }}
-                                {{ form.password }}
+                                <div class="password-container" style="position: relative; display: inline-block; width: auto;"> {# Contenedor para input y ojo #}
+                                    {{ form.password }}
+                                    <span id="togglePassword" class="toggle-password-button" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; user-select: none;">
+                                        👁️
+                                    </span>
+                                </div>
                                 {% if form.password.errors %}
                                     {% for error in form.password.errors %}
                                         <p class="errornote">{{ error }}</p>
@@ -49,4 +54,34 @@
             </div>
         </div>
     </div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordInput = document.getElementById('{{ form.password.id_for_label }}'); // Django genera 'id_password' por defecto
+    const togglePasswordButton = document.getElementById('togglePassword');
+
+    if (passwordInput && togglePasswordButton) {
+        // Asegurar que el input de password tenga un ID si no lo tiene por defecto
+        // Normalmente Django lo asigna como 'id_password'
+        if (!passwordInput.id) {
+            passwordInput.id = 'id_password'; // O usa form.password.id_for_label que es más robusto
+        }
+
+        togglePasswordButton.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+
+            if (type === 'password') {
+                this.textContent = '👁️'; // Ojo abierto
+            } else {
+                this.textContent = '⚫'; 
+            }
+        });
+    } else {
+        console.warn('Elemento de contraseña o botón de mostrar/ocultar no encontrado.');
+    }
+});
+</script>
+{% endblock %}
 {% endblock %}
