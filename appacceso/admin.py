@@ -5,7 +5,7 @@ from django.utils.html import format_html
 from import_export import resources
 from semantic_admin.contrib.import_export.admin import SemanticImportExportModelAdmin
 from django.http import HttpResponse
-from django.utils import timezone # Para el nombre del archivo
+from django.utils import timezone # Para el nombre del archivo y la conversión de zona horaria
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as OpenpyxlImage
 from openpyxl.utils import get_column_letter
@@ -22,52 +22,58 @@ class SedeAdmin(admin.ModelAdmin):
     list_filter = ('ciudad',)
 
 class RegistroFirmaResource(resources.ModelResource):
-    # Personalizar los campos y cómo se exportan
     usuario_username = resources.Field(attribute='usuario__username', column_name='Usuario')
     sede_nombre = resources.Field(attribute='sede__nombre', column_name='Sede')
     fecha_ingreso_formateada = resources.Field(attribute='fecha_ingreso', column_name='Fecha de Ingreso')
     fecha_grabacion_formateada = resources.Field(attribute='fecha_grabacion', column_name='Fecha de Grabación')
-    # Si quieres exportar la URL de la firma (ten en cuenta que esto es solo la URL, no la imagen en sí)
-    firma_url = resources.Field(column_name='URL Firma') # Activamos este campo
-
+    firma_url = resources.Field(column_name='URL Firma')
 
     class Meta:
         model = RegistroFirma
-        # Define los campos que quieres exportar y su orden
-        fields = ('id', 'usuario_username', 'sede_nombre', 'fecha_ingreso_formateada', 'fecha_grabacion_formateada', 'firma_url') # Añadimos firma_url
-        export_order = fields # Mantiene el orden definido en fields
+        fields = ('id', 'usuario_username', 'sede_nombre', 'fecha_ingreso_formateada', 'fecha_grabacion_formateada', 'firma_url')
+        export_order = fields
 
     def dehydrate_fecha_ingreso_formateada(self, registro):
-        return registro.fecha_ingreso.strftime("%Y-%m-%d %H:%M:%S") if registro.fecha_ingreso else ''
+        if registro.fecha_ingreso:
+            # Convertir a la zona horaria local antes de formatear
+            local_dt = timezone.localtime(registro.fecha_ingreso)
+            return local_dt.strftime("%Y-%m-%d %H:%M:%S")
+        return ''
     
     def dehydrate_fecha_grabacion_formateada(self, registro):
-        return registro.fecha_grabacion.strftime("%Y-%m-%d %H:%M:%S") if registro.fecha_grabacion else ''
+        if registro.fecha_grabacion:
+            # Convertir a la zona horaria local antes de formatear
+            local_dt = timezone.localtime(registro.fecha_grabacion)
+            return local_dt.strftime("%Y-%m-%d %H:%M:%S")
+        return ''
     
-    # Si decides exportar la URL de la firma:
-    def dehydrate_firma_url(self, registro): # Activamos este método
-        if registro.firma:
-            return registro.firma.url # Esto da la URL relativa, ej: /media/firmas/2023/05/09/firma.png
+    def dehydrate_firma_url(self, registro):
+        if registro.firma and hasattr(registro.firma, 'url'):
+            # Construir URL absoluta si el request está disponible
+            if hasattr(self, 'request') and self.request:
+                 return self.request.build_absolute_uri(registro.firma.url)
+            return registro.firma.url # Fallback a URL relativa
         return ''
 
+    def before_export(self, queryset, *args, **kwargs):
+        # Almacenar el request para usarlo en dehydrate_firma_url
+        self.request = kwargs.pop('request', None)
+        super().before_export(queryset, *args, **kwargs)
+
 @admin.register(RegistroFirma)
-class RegistroFirmaAdmin(SemanticImportExportModelAdmin): # Cambiar la herencia a la de django-import-export
-    # Forzar el uso de nuestra plantilla sobrescrita
-    resource_classes = [RegistroFirmaResource] # Usar la clase Resource
+class RegistroFirmaAdmin(SemanticImportExportModelAdmin):
+    resource_classes = [RegistroFirmaResource]
     list_display = ('usuario', 'sede', 'fecha_ingreso', 'fecha_grabacion', 'ver_firma')
     list_filter = ('fecha_ingreso', 'usuario', 'sede')
     search_fields = ('usuario__username', 'sede__nombre')
-    # Hacemos 'sede' editable en el form de admin si no es readonly
+    # 'fecha_ingreso' es editable en el form de captura, pero puede ser readonly en el admin.
     readonly_fields = ('usuario', 'fecha_ingreso', 'fecha_grabacion', 'firma_preview')
-    # Si quieres que 'sede' sea editable en el admin, quítalo de readonly_fields.
-    # Si 'sede' es null=True en el modelo y quieres que sea opcional en el admin, está bien.
-    # Si 'sede' es null=False, debe ser un campo requerido.
-
+    
     fieldsets = (
         (None, {
             'fields': ('usuario', 'sede', 'fecha_ingreso', 'firma_preview', 'fecha_grabacion')
         }),
     )
-    # La acción de exportar se añade automáticamente por ImportExportModelAdmin
 
     def ver_firma(self, obj):
         if obj.firma and hasattr(obj.firma, 'url'):
@@ -75,66 +81,71 @@ class RegistroFirmaAdmin(SemanticImportExportModelAdmin): # Cambiar la herencia 
         return "Sin firma"
     ver_firma.short_description = 'Firma (Click para ampliar)'
 
-    def firma_preview(self, obj): # Para el form de admin
-        if obj.firma:
+    def firma_preview(self, obj):
+        if obj.firma and hasattr(obj.firma, 'url'):
             return format_html('<img src="{}" width="300" height="150" style="object-fit: contain;" />', obj.firma.url)
         return "No hay firma adjunta."
     firma_preview.short_description = 'Vista Previa Firma'
 
-    # Nueva acción para exportar con imágenes incrustadas
     def export_selected_to_excel_with_images(self, request, queryset):
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )
-        response['Content-Disposition'] = f'attachment; filename="registros_firmas_con_imagenes_{timezone.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+        filename = f"registros_firmas_con_imagenes_{timezone.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"' # Comillas alrededor del filename
 
         workbook = Workbook()
         sheet = workbook.active
         sheet.title = 'Registros de Firmas'
 
-        # Definir cabeceras
         headers = ['ID', 'Usuario', 'Sede', 'Fecha de Ingreso', 'Fecha de Grabación', 'Firma']
         for col_num, header_title in enumerate(headers, 1):
             cell = sheet.cell(row=1, column=col_num, value=header_title)
             cell.font = openpyxl.styles.Font(bold=True)
 
-        # Escribir datos
         row_num = 2
-        # Altura de la imagen en píxeles y altura de la fila en puntos
-        # 1 píxel ~= 0.75 puntos (para 96 DPI pantalla / 72 DPI Excel)
-        img_display_height_px = 80  # Altura deseada para la imagen en la celda (en píxeles)
-        row_height_pt = (img_display_height_px * 0.75) + 15 # Altura de la fila en puntos, con padding
-
-        # Ancho máximo de la imagen en píxeles, para evitar que sea demasiado ancha
-        img_max_width_px = 200 
-        # Ancho de la columna de la firma (aproximado en unidades de caracteres de Excel)
-        # 1 unidad de ancho de carácter ~= 7 píxeles (con fuente Calibri 11)
-        firma_col_width = (img_max_width_px / 7) + 2 
+        img_display_height_px = 80
+        row_height_pt = (img_display_height_px * 0.75) + 15 
+        img_max_width_px = 200
+        firma_col_width = (img_max_width_px / 7) + 2
 
         for registro in queryset:
             sheet.cell(row=row_num, column=1, value=registro.id)
             sheet.cell(row=row_num, column=2, value=registro.usuario.username)
             sheet.cell(row=row_num, column=3, value=registro.sede.nombre if registro.sede else 'N/A')
-            sheet.cell(row=row_num, column=4, value=registro.fecha_ingreso.strftime("%Y-%m-%d %H:%M:%S") if registro.fecha_ingreso else '')
-            sheet.cell(row=row_num, column=5, value=registro.fecha_grabacion.strftime("%Y-%m-%d %H:%M:%S") if registro.fecha_grabacion else '')
+            
+            fecha_ingreso_str = ''
+            if registro.fecha_ingreso:
+                # Convertir a la zona horaria local antes de formatear
+                fecha_ingreso_str = timezone.localtime(registro.fecha_ingreso).strftime("%Y-%m-%d %H:%M:%S")
+            sheet.cell(row=row_num, column=4, value=fecha_ingreso_str)
+            
+            fecha_grabacion_str = ''
+            if registro.fecha_grabacion:
+                # Convertir a la zona horaria local antes de formatear
+                fecha_grabacion_str = timezone.localtime(registro.fecha_grabacion).strftime("%Y-%m-%d %H:%M:%S")
+            sheet.cell(row=row_num, column=5, value=fecha_grabacion_str)
 
             firma_cell_anchor = f'{get_column_letter(6)}{row_num}'
-            sheet.row_dimensions[row_num].height = row_height_pt # Establecer altura de fila
+            sheet.row_dimensions[row_num].height = row_height_pt
 
             if registro.firma and hasattr(registro.firma, 'path') and registro.firma.path and os.path.exists(registro.firma.path):
                 try:
                     img_pil = PillowImage.open(registro.firma.path)
                     original_width, original_height = img_pil.size
-                    aspect_ratio = original_width / original_height
+                    
+                    if original_height == 0:
+                        sheet.cell(row=row_num, column=6, value="Error: Altura de imagen cero")
+                        row_num +=1
+                        continue
 
-                    # Calcular ancho de la imagen basado en la altura fija y la relación de aspecto
+                    aspect_ratio = original_width / original_height
                     current_img_width_px = int(img_display_height_px * aspect_ratio)
                     current_img_height_px = img_display_height_px
 
-                    # Si la imagen calculada es más ancha que el máximo, reescalar por ancho
                     if current_img_width_px > img_max_width_px:
                         current_img_width_px = img_max_width_px
-                        current_img_height_px = int(current_img_width_px / aspect_ratio)
+                        current_img_height_px = int(current_img_width_px / aspect_ratio) if aspect_ratio != 0 else img_display_height_px
 
                     img_openpyxl = OpenpyxlImage(registro.firma.path)
                     img_openpyxl.height = current_img_height_px
@@ -143,17 +154,16 @@ class RegistroFirmaAdmin(SemanticImportExportModelAdmin): # Cambiar la herencia 
                     sheet.add_image(img_openpyxl, firma_cell_anchor)
                 except FileNotFoundError:
                     sheet.cell(row=row_num, column=6, value="Archivo no encontrado")
-                except Exception: # Captura otros errores de Pillow/Openpyxl
-                    sheet.cell(row=row_num, column=6, value="Error al cargar imagen")
+                except Exception as e:
+                    sheet.cell(row=row_num, column=6, value=f"Error al cargar imagen: {e}")
             else:
-                sheet.cell(row=row_num, column=6, value="Sin firma")
+                sheet.cell(row=row_num, column=6, value="Sin firma o ruta inválida")
             
             row_num += 1
 
-        # Ajustar anchos de columna (excepto la de la imagen que ya tiene un ancho estimado)
         for i, column_cells in enumerate(sheet.columns):
             col_letter = get_column_letter(i + 1)
-            if col_letter == get_column_letter(6): # Columna de la firma
+            if col_letter == get_column_letter(6):
                 sheet.column_dimensions[col_letter].width = firma_col_width
                 continue
             
@@ -168,4 +178,8 @@ class RegistroFirmaAdmin(SemanticImportExportModelAdmin): # Cambiar la herencia 
 
     export_selected_to_excel_with_images.short_description = "Exportar seleccionados a Excel (con imágenes)"
 
-    actions = [export_selected_to_excel_with_images] # Añadir la acción al desplegable
+    actions = [export_selected_to_excel_with_images]
+
+    def get_export_resource_kwargs(self, request, *args, **kwargs):
+        # Pasar el request al Resource para construir URLs absolutas
+        return {"request": request}
