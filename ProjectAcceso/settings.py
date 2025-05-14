@@ -29,17 +29,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 
-#SECRET_KEY = env("DJANGO_SECRET_KEY")
-#DEBUG = env("DJANGO_DEBUG")
+SECRET_KEY = env("DJANGO_SECRET_KEY")
+DEBUG = env("DJANGO_DEBUG")
 
 
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure--nuwg$9b9pj&0*_7%1h@93#w$)w6!%xk7*jz299vogy(+)=272"
+#SECRET_KEY = "django-insecure--nuwg$9b9pj&0*_7%1h@93#w$)w6!%xk7*jz299vogy(+)=272"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+#DEBUG = True
 
 
 ALLOWED_HOSTS = ["*" ,"*.up.railway.app"]
@@ -109,22 +109,22 @@ WSGI_APPLICATION = "ProjectAcceso.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-#DATABASES = {
-#      'default': dj_database_url.config(
-#        # dj-database-url buscará automáticamente la variable de entorno DATABASE_URL.
-#        # No es necesario usar env() aquí para la URL de la base de datos.
-#        conn_max_age=600 # Opcional: mantiene las conexiones abiertas por 10 minutos
-#    )
-#}
-
-
-
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+      'default': dj_database_url.config(
+        # dj-database-url buscará automáticamente la variable de entorno DATABASE_URL.
+        # No es necesario usar env() aquí para la URL de la base de datos.
+        conn_max_age=600 # Opcional: mantiene las conexiones abiertas por 10 minutos
+    )
 }
+
+
+
+#DATABASES = {
+#    "default": {
+#        "ENGINE": "django.db.backends.sqlite3",
+#        "NAME": BASE_DIR / "db.sqlite3",
+#    }
+#}
 
 
 # Password validation
