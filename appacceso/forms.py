@@ -10,14 +10,16 @@ class RegistroFirmaForm(forms.ModelForm):
     class Meta:
         model = RegistroFirma
         # Actualizamos los campos: quitamos 'comentarios', añadimos 'sede'
-        fields = ['sede', 'fecha_ingreso', 'signature_data_url'] # usuario se maneja en la vista
+        fields = ['sede', 'tipo_registro', 'fecha_ingreso', 'signature_data_url'] # usuario se maneja en la vista
         widgets = {
             'fecha_ingreso': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
             'sede': forms.Select(attrs={'class': 'form-select'}), # Para que se vea bien con Bootstrap
+            'tipo_registro': forms.Select(attrs={'class': 'form-select'}),
         }
         labels = {
-            'fecha_ingreso': 'Fecha y Hora de Ingreso',
+            'fecha_ingreso': 'Fecha y Hora', # Cambiada etiqueta
             'sede': 'Sede de Ingreso',
+            'tipo_registro': 'Tipo de Registro',
         }
 
     def clean_fecha_ingreso(self):

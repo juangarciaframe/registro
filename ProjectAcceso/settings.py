@@ -37,9 +37,9 @@ DEBUG = env("DJANGO_DEBUG")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 #SECRET_KEY = "django-insecure--nuwg$9b9pj&0*_7%1h@93#w$)w6!%xk7*jz299vogy(+)=272"
+#DEBUG = True
 
 # SECURITY WARNING: don't run with debug turned on in production!
-#DEBUG = True
 
 
 ALLOWED_HOSTS = ["*" ,"*.up.railway.app"]
@@ -122,7 +122,7 @@ DATABASES = {
 #DATABASES = {
 #    "default": {
 #        "ENGINE": "django.db.backends.sqlite3",
-#        "NAME": BASE_DIR / "db.sqlite3",
+#3        "NAME": BASE_DIR / "db.sqlite3",
 #    }
 #}
 

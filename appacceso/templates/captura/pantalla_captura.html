@@ -76,6 +76,17 @@
                 </div>
 
                 <div class="mb-3">
+                    <label for="{{ form.tipo_registro.id_for_label }}" class="form-label">{{ form.tipo_registro.label }}:</label>
+                    {{ form.tipo_registro|add_class:"form-select" }} {# O simplemente {{ form.tipo_registro }} si la clase ya está en el widget #}
+                    {% if form.tipo_registro.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.tipo_registro.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    {# La etiqueta aquí se toma del form.py, que debería ser "Fecha y Hora" o "Fecha" según tu última config #}
                     <label for="{{ form.fecha_ingreso.id_for_label }}" class="form-label">{{ form.fecha_ingreso.label }}:</label>
                     {{ form.fecha_ingreso }} {# Asume que 'form-control' ya está en el widget #}
                     {% if form.fecha_ingreso.errors %}

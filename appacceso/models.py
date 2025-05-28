@@ -20,14 +20,25 @@ class Sede(models.Model):
         ordering = ['nombre']
 
 class RegistroFirma(models.Model):
+    TIPO_REGISTRO_CHOICES = [
+        ('ingreso', 'Ingreso'),
+        ('salida', 'Salida'),
+    ]
+
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Usuario")
     sede = models.ForeignKey(Sede, on_delete=models.PROTECT, verbose_name="Sede", null=True, blank=False) # null=True temporalmente para migraciones si hay datos existentes
-    fecha_ingreso = models.DateTimeField(default=timezone.now, verbose_name="Fecha de Ingreso (Editable)")
+    tipo_registro = models.CharField(
+        max_length=10,
+        choices=TIPO_REGISTRO_CHOICES,
+        default='ingreso',
+        verbose_name="Tipo de Registro"
+    )
+    fecha_ingreso = models.DateTimeField(default=timezone.now, verbose_name="Fecha") # Cambiado verbose_name
     firma = models.ImageField(upload_to='firmas/%Y/%m/%d/', verbose_name="Firma Digital")
     fecha_grabacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Grabación (Automática)")
 
     def __str__(self):
-        return f"Registro de {self.usuario.username} en {self.sede.nombre if self.sede else 'Sede no especificada'} - {self.fecha_ingreso.strftime('%Y-%m-%d %H:%M')}"
+        return f"{self.get_tipo_registro_display()} de {self.usuario.username} en {self.sede.nombre if self.sede else 'Sede no especificada'} - {self.fecha_ingreso.strftime('%Y-%m-%d %H:%M')}"
 
     class Meta:
         verbose_name = "Registro de Firma"

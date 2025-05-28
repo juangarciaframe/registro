@@ -24,13 +24,14 @@ class SedeAdmin(admin.ModelAdmin):
 class RegistroFirmaResource(resources.ModelResource):
     usuario_username = resources.Field(attribute='usuario__username', column_name='Usuario')
     sede_nombre = resources.Field(attribute='sede__nombre', column_name='Sede')
-    fecha_ingreso_formateada = resources.Field(attribute='fecha_ingreso', column_name='Fecha de Ingreso')
+    tipo_registro_display = resources.Field(column_name='Tipo de Registro')
+    fecha_formateada = resources.Field(attribute='fecha_ingreso', column_name='Fecha') # Cambiado nombre de columna
     fecha_grabacion_formateada = resources.Field(attribute='fecha_grabacion', column_name='Fecha de Grabación')
     firma_url = resources.Field(column_name='URL Firma')
 
     class Meta:
         model = RegistroFirma
-        fields = ('id', 'usuario_username', 'sede_nombre', 'fecha_ingreso_formateada', 'fecha_grabacion_formateada', 'firma_url')
+        fields = ('id', 'usuario_username', 'sede_nombre', 'tipo_registro_display', 'fecha_formateada', 'fecha_grabacion_formateada', 'firma_url')
         export_order = fields
 
     def dehydrate_fecha_ingreso_formateada(self, registro):
@@ -40,6 +41,12 @@ class RegistroFirmaResource(resources.ModelResource):
             return local_dt.strftime("%Y-%m-%d %H:%M:%S")
         return ''
     
+    # Renombrar para coincidir con el nuevo nombre del campo en 'fields'
+    dehydrate_fecha_formateada = dehydrate_fecha_ingreso_formateada
+
+    def dehydrate_tipo_registro_display(self, registro):
+        return registro.get_tipo_registro_display()
+
     def dehydrate_fecha_grabacion_formateada(self, registro):
         if registro.fecha_grabacion:
             # Convertir a la zona horaria local antes de formatear
@@ -63,15 +70,15 @@ class RegistroFirmaResource(resources.ModelResource):
 @admin.register(RegistroFirma)
 class RegistroFirmaAdmin(SemanticImportExportModelAdmin):
     resource_classes = [RegistroFirmaResource]
-    list_display = ('usuario', 'sede', 'fecha_ingreso', 'fecha_grabacion', 'ver_firma')
-    list_filter = ('fecha_ingreso', 'usuario', 'sede')
+    list_display = ('usuario', 'sede', 'tipo_registro', 'fecha_ingreso', 'fecha_grabacion', 'ver_firma')
+    list_filter = ('fecha_ingreso', 'usuario', 'sede', 'tipo_registro')
     search_fields = ('usuario__username', 'sede__nombre')
     # 'fecha_ingreso' es editable en el form de captura, pero puede ser readonly en el admin.
-    readonly_fields = ('usuario', 'fecha_ingreso', 'fecha_grabacion', 'firma_preview')
+    readonly_fields = ('usuario', 'tipo_registro', 'fecha_ingreso', 'fecha_grabacion', 'firma_preview')
     
     fieldsets = (
         (None, {
-            'fields': ('usuario', 'sede', 'fecha_ingreso', 'firma_preview', 'fecha_grabacion')
+            'fields': ('usuario', 'sede', 'tipo_registro', 'fecha_ingreso', 'firma_preview', 'fecha_grabacion')
         }),
     )
 
@@ -97,8 +104,8 @@ class RegistroFirmaAdmin(SemanticImportExportModelAdmin):
         workbook = Workbook()
         sheet = workbook.active
         sheet.title = 'Registros de Firmas'
-
-        headers = ['ID', 'Usuario', 'Sede', 'Fecha de Ingreso', 'Fecha de Grabación', 'Firma']
+        # Actualizar encabezados
+        headers = ['ID', 'Usuario', 'Sede', 'Tipo de Registro', 'Fecha', 'Fecha de Grabación', 'Firma']
         for col_num, header_title in enumerate(headers, 1):
             cell = sheet.cell(row=1, column=col_num, value=header_title)
             cell.font = openpyxl.styles.Font(bold=True)
@@ -112,21 +119,24 @@ class RegistroFirmaAdmin(SemanticImportExportModelAdmin):
         for registro in queryset:
             sheet.cell(row=row_num, column=1, value=registro.id)
             sheet.cell(row=row_num, column=2, value=registro.usuario.username)
-            sheet.cell(row=row_num, column=3, value=registro.sede.nombre if registro.sede else 'N/A')
+            sheet.cell(row=row_num, column=3, value=registro.sede.nombre if registro.sede else 'N/A') # Sede
+            sheet.cell(row=row_num, column=4, value=registro.get_tipo_registro_display()) # Tipo de Registro
             
             fecha_ingreso_str = ''
             if registro.fecha_ingreso:
                 # Convertir a la zona horaria local antes de formatear
                 fecha_ingreso_str = timezone.localtime(registro.fecha_ingreso).strftime("%Y-%m-%d %H:%M:%S")
-            sheet.cell(row=row_num, column=4, value=fecha_ingreso_str)
+            sheet.cell(row=row_num, column=5, value=fecha_ingreso_str) # Fecha (antes Fecha de Ingreso)
             
             fecha_grabacion_str = ''
             if registro.fecha_grabacion:
                 # Convertir a la zona horaria local antes de formatear
                 fecha_grabacion_str = timezone.localtime(registro.fecha_grabacion).strftime("%Y-%m-%d %H:%M:%S")
-            sheet.cell(row=row_num, column=5, value=fecha_grabacion_str)
+            sheet.cell(row=row_num, column=6, value=fecha_grabacion_str) # Fecha de Grabación
 
-            firma_cell_anchor = f'{get_column_letter(6)}{row_num}'
+            # Ajustar columna de la firma
+            firma_col_idx = 7
+            firma_cell_anchor = f'{get_column_letter(firma_col_idx)}{row_num}'
             sheet.row_dimensions[row_num].height = row_height_pt
 
             if registro.firma and hasattr(registro.firma, 'path') and registro.firma.path and os.path.exists(registro.firma.path):
@@ -135,7 +145,7 @@ class RegistroFirmaAdmin(SemanticImportExportModelAdmin):
                     original_width, original_height = img_pil.size
                     
                     if original_height == 0:
-                        sheet.cell(row=row_num, column=6, value="Error: Altura de imagen cero")
+                        sheet.cell(row=row_num, column=firma_col_idx, value="Error: Altura de imagen cero")
                         row_num +=1
                         continue
 
@@ -153,17 +163,17 @@ class RegistroFirmaAdmin(SemanticImportExportModelAdmin):
                     
                     sheet.add_image(img_openpyxl, firma_cell_anchor)
                 except FileNotFoundError:
-                    sheet.cell(row=row_num, column=6, value="Archivo no encontrado")
+                    sheet.cell(row=row_num, column=firma_col_idx, value="Archivo no encontrado")
                 except Exception as e:
-                    sheet.cell(row=row_num, column=6, value=f"Error al cargar imagen: {e}")
+                    sheet.cell(row=row_num, column=firma_col_idx, value=f"Error al cargar imagen: {e}")
             else:
-                sheet.cell(row=row_num, column=6, value="Sin firma o ruta inválida")
+                sheet.cell(row=row_num, column=firma_col_idx, value="Sin firma o ruta inválida")
             
             row_num += 1
 
         for i, column_cells in enumerate(sheet.columns):
             col_letter = get_column_letter(i + 1)
-            if col_letter == get_column_letter(6):
+            if col_letter == get_column_letter(firma_col_idx): # Ajustar columna de la firma
                 sheet.column_dimensions[col_letter].width = firma_col_width
                 continue
             
