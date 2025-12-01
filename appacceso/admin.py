@@ -1,8 +1,9 @@
 # d:\AAA_Framework_Acceso\ProjectAcceso\appacceso\admin.py
 from django.contrib import admin
 from .models import RegistroFirma, Sede
-from django.utils.html import format_html
+from django import forms # Para personalizar el formulario del filtro
 from import_export import resources
+from rangefilter.filters import DateRangeFilter # Importar el filtro de rango simple
 from semantic_admin.contrib.import_export.admin import SemanticImportExportModelAdmin
 from django.http import HttpResponse
 from django.utils import timezone # Para el nombre del archivo y la conversión de zona horaria
@@ -12,7 +13,22 @@ from openpyxl.utils import get_column_letter
 import openpyxl.styles # Para estilos de celda como negrita
 from io import BytesIO
 from PIL import Image as PillowImage # Para abrir y manipular la imagen, Pillow es una dependencia de ImageField
+from django.utils.html import format_html
 import os # Para verificar si el archivo de imagen existe
+
+
+# 1. Formulario personalizado para el filtro de rango de fechas
+class CustomRangeForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        # Obtenemos los nombres de los campos que el filtro espera
+        field_name = kwargs.pop('field_name')
+        super().__init__(*args, **kwargs)
+        self.fields[f'{field_name}_from'] = forms.CharField(required=False, widget=forms.TextInput(attrs={'placeholder': 'Desde: AAAA-MM-DD'}))
+        self.fields[f'{field_name}_to'] = forms.CharField(required=False, widget=forms.TextInput(attrs={'placeholder': 'Hasta: AAAA-MM-DD'}))
+
+# 2. Clase de filtro que usa nuestro formulario personalizado
+class CustomDateRangeFilter(DateRangeFilter):
+    form_class = CustomRangeForm
 
 
 @admin.register(Sede)
@@ -70,8 +86,13 @@ class RegistroFirmaResource(resources.ModelResource):
 @admin.register(RegistroFirma)
 class RegistroFirmaAdmin(SemanticImportExportModelAdmin):
     resource_classes = [RegistroFirmaResource]
-    list_display = ('usuario', 'sede', 'tipo_registro', 'fecha_ingreso', 'fecha_grabacion', 'ver_firma')
-    list_filter = ('fecha_ingreso', 'usuario', 'sede', 'tipo_registro')
+    list_display = ('usuario', 'sede', 'tipo_registro', 'fecha_ingreso', 'fecha_grabacion', 'ver_firma')    
+    list_filter = (
+        ('fecha_ingreso', CustomDateRangeFilter), # Usar nuestro filtro personalizado
+        'usuario', 
+        'sede', 
+        'tipo_registro'
+    )
     search_fields = ('usuario__username', 'sede__nombre')
     # 'fecha_ingreso' es editable en el form de captura, pero puede ser readonly en el admin.
     readonly_fields = ('usuario', 'tipo_registro', 'fecha_ingreso', 'fecha_grabacion', 'firma_preview')

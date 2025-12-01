@@ -55,6 +55,7 @@ CSRF_TRUSTED_ORIGINS = [
 # Application definition
 
 INSTALLED_APPS = [
+    "rangefilter", # Para filtros de rango de fechas en el admin
     "semantic_admin",
     "semantic_forms",
     "django.contrib.admin",
@@ -122,7 +123,7 @@ DATABASES = {
 #DATABASES = {
 #    "default": {
 #        "ENGINE": "django.db.backends.sqlite3",
-#3        "NAME": BASE_DIR / "db.sqlite3",
+#         "NAME": BASE_DIR / "db.sqlite3",
 #    }
 #}
 
