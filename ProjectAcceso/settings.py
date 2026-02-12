@@ -45,8 +45,9 @@ DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = ["*" ,"*.up.railway.app"]
 
 # Añade tu dominio de Railway aquí para la verificación CSRF
-CSRF_TRUSTED_ORIGINS = [
-    'https://registro.up.railway.app'
+CSRF_TRUSTED_ORIGINS = [ 'https://registro-production-c15b.up.railway.app',
+    'https://cat.framework.com.co',
+    'https://catnuevo.framework.com.co', 'https://registro.up.railway.app'
 ]
 
 
